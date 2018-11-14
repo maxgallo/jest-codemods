@@ -52,6 +52,7 @@ const avaToJestMethods = {
     afterEach: 'afterEach',
     skip: 'test.skip',
     only: 'test.only',
+    'afterEach.always': 'afterEach',
 };
 
 export default function avaToJest(fileInfo, api, options) {
@@ -184,8 +185,12 @@ export default function avaToJest(fileInfo, api, options) {
                     e => e !== 'serial' && e !== testFunctionName && e !== 'cb'
                 );
 
-                if (avaMethods.length === 1) {
-                    const avaMethod = avaMethods[0];
+                if (
+                    avaMethods.length === 1
+                    || (avaMethods.length === 2 && avaMethods[1] === 'always')
+                ) {
+                    // const avaMethod = avaMethods[0];
+                    const avaMethod = avaMethods.join('.');
                     if (avaMethod === 'todo') {
                         const firstArg = jestMethodArgs && jestMethodArgs[0];
                         if (firstArg.type === 'Literal') {
@@ -227,6 +232,35 @@ export default function avaToJest(fileInfo, api, options) {
                     rewriteAssertionsAndTestArgument(j, p);
                 })
                 .replaceWith(mapPathToJestCallExpression);
+        },
+
+        function addContext () {
+            const body = ast.get().node.program.body;
+
+            const whatToAdd = j.variableDeclaration('const', [
+                j.variableDeclarator(
+                    j.identifier('t'),
+                    j.objectExpression([
+                        j.property(
+                            'init',
+                            j.identifier('context'),
+                            //j.literal('bar')
+                            j.objectExpression([])
+                        )
+                    ])
+                ),
+            ]);
+
+            const imports = ast.find(j.ImportDeclaration);
+            const n = imports.length;
+
+            if(n){
+                //j(imports.at(0).get()).insertBefore(whatToAdd); // before the imports
+                j(imports.at(n-1).get()).insertAfter(whatToAdd); // after the imports
+            } else {
+                // root.get().node.program.body.unshift(s); // begining of file
+                body.unshift(whatToAdd)
+            }
         },
     ];
 

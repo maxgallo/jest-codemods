@@ -105,7 +105,8 @@ function removePassingAssertion(j, path) {
                 property: { name: 'pass' },
             },
         })
-        .remove();
+        // .remove();
+        .replaceWith(j.identifier('null'));
 }
 
 /**
